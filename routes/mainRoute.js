@@ -1,13 +1,15 @@
 const path = require('path');
 const mainRoute = require('express').Router();
 const { env } = require("../lib/database");
-console.log('routes... env...,,,', env);
+
 
 mainRoute.get('/*', (req, res) => {
   if (env === 'dev' || env === 'uat' || env === 'prod') {
+    console.log('routes... env...,,,', env);
     const route = path.join(__dirname, '..', 'dist', 'index.html');
     res.sendFile(route);
   } else {
+    console.log('routes... env...,,,', env);
     const route = path.join(__dirname, '..', '..', 'src', 'index.html');
     res.sendFile(route);
   }
