@@ -33,11 +33,11 @@ app.use('/',mainRoute);
 
 let port ='';
 
-if(env === 'local'){
-    port = 5000;
-}else if(env === 'prod'){
+//if(env === 'local'){
+//    port = 5000;
+//}else if(env === 'prod'){
     port = 3010;
-}
+//}
 
 
 const server = http.createServer(app);
