@@ -5,11 +5,9 @@ const { env } = require("../lib/database");
 
 mainRoute.get('/*', (req, res) => {
   if (env === 'dev' || env === 'uat' || env === 'prod') {
-    console.log('routes... env...,,,', env);
     const route = path.join(__dirname, '..', 'dist', 'index.html');
     res.sendFile(route);
   } else {
-    console.log('routes... env...,,,', env);
     const route = path.join(__dirname, '..', '..', 'src', 'index.html');
     res.sendFile(route);
   }
