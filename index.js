@@ -3,6 +3,9 @@ const http = require('http');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+
 
 const app = express();
 
@@ -10,6 +13,19 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true, parameterLimit: 50000 }));
+
+app.use(cookieParser());
+app.use(session({
+  secret: 'abcdef',
+  resave: true,
+  saveUninitialized: true,
+  cookie: {
+    maxAge: 1000 * 60 * 60, // 60 min
+    sameSite: true,
+    secure: false
+  }
+}));
+
 
 const { env } = require("./lib/database");
 
@@ -27,9 +43,13 @@ const mainRoute = require('./routes/mainRoute');
 app.use('/staticrecords', require('./routes/static'));
 app.use('/categories', require('./routes/categories'));
 app.use('/auth', require('./routes/auth'));
+app.use('/cart', require('./routes/cart'));
+app.use('/order', require('./routes/order'));
 
 
 app.use('/',mainRoute);
+
+
 
 let port ='';
 
