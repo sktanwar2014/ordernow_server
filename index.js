@@ -33,8 +33,8 @@ if (env === 'dev' || env === 'uat' || env === 'prod') {
     app.use('/', express.static(path.join(__dirname, 'dist')));
     app.use('/dist', express.static(path.join(__dirname, 'dist')));
 } else {
-    app.use('/', express.static(path.join(__dirname, '..', 'src')));
-    app.use('/src', express.static(path.join(__dirname, '..', 'src')));
+  app.use('/', express.static(path.join(__dirname, '..', 'src')));
+  app.use('/src', express.static(path.join(__dirname, '..', 'src')));
 }
 
 const mainRoute = require('./routes/mainRoute');
@@ -47,17 +47,38 @@ app.use('/cart', require('./routes/cart'));
 app.use('/order', require('./routes/order'));
 
 
+
+app.use('/api/images', function (req, res, next) {
+  try {
+    const fileName = (req.query.path).toString().split('/').pop();
+
+    let file = '';
+
+    if(fileName === 'null'){
+        file = `${__dirname}/files/fileNotAvailabe.jpg`;
+    }else{
+        file = `${__dirname}/files/${req.query.path}`;
+    }
+
+    res.download(file); // Set disposition and send it.
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+
 app.use('/',mainRoute);
 
 
 
 let port ='';
 
-//if(env === 'local'){
-//    port = 5000;
-//}else if(env === 'prod'){
+if(env === 'local'){
+    port = 5000;
+}else if(env === 'prod'){
     port = 3010;
-//}
+}
 
 
 const server = http.createServer(app);
