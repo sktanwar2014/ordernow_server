@@ -10,7 +10,7 @@ const session = require('express-session');
 const app = express();
 
 app.use(cors());
-//app.use(bodyParser.json());
+// app.use(bodyParser.json());
 app.use(bodyParser.json({ limit: '50mb', extend: true }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true}));
 
@@ -33,8 +33,8 @@ if (env === 'dev' || env === 'uat' || env === 'prod') {
     app.use('/', express.static(path.join(__dirname, 'dist')));
     app.use('/dist', express.static(path.join(__dirname, 'dist')));
 } else {
-  app.use('/', express.static(path.join(__dirname, '..', 'src')));
-  app.use('/src', express.static(path.join(__dirname, '..', 'src')));
+    app.use('/', express.static(path.join(__dirname, '..', 'src')));
+    app.use('/src', express.static(path.join(__dirname, '..', 'src')));
 }
 
 const mainRoute = require('./routes/mainRoute');
@@ -45,6 +45,7 @@ app.use('/categories', require('./routes/categories'));
 app.use('/auth', require('./routes/auth'));
 app.use('/cart', require('./routes/cart'));
 app.use('/order', require('./routes/order'));
+app.use('/units', require('./routes/units'));
 
 
 
