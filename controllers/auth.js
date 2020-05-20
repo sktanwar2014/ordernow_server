@@ -74,7 +74,6 @@ const register = async function (req, res, next) {
 			let url = 'http://' + domainName + '/auth/activateEmail?accountId=' + params.accountId + '&name=' + params.user_id + '&token=' + params.token;
             const mail = {                
                 from : mailUser,
-//                from : 'sktanwar.2020@gmail.com',
                 to: params.email,
                 subject: 'Please verify your email address',
                 text: 'activate your account ',
