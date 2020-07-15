@@ -7,7 +7,6 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const fs = require('fs');
 
-
 const app = express();
 
 app.use(cors());
@@ -34,8 +33,8 @@ if (env === 'dev' || env === 'uat' || env === 'prod') {
     app.use('/', express.static(path.join(__dirname, 'dist')));
     app.use('/dist', express.static(path.join(__dirname, 'dist')));
 } else {
-  app.use('/', express.static(path.join(__dirname, '..', 'src')));
-  app.use('/src', express.static(path.join(__dirname, '..', 'src')));
+    app.use('/', express.static(path.join(__dirname, '..', 'src')));
+    app.use('/src', express.static(path.join(__dirname, '..', 'src')));
 }
 
 const mainRoute = require('./routes/mainRoute');
@@ -47,6 +46,7 @@ app.use('/auth', require('./routes/auth'));
 app.use('/cart', require('./routes/cart'));
 app.use('/order', require('./routes/order'));
 app.use('/units', require('./routes/units'));
+app.use('/settings', require('./routes/settings'));
 
 
 
