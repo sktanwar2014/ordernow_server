@@ -742,24 +742,23 @@ Order.prototype.orderVerificationByCustomer = function () {
         throw error;
       }
       connection.changeUser({database : dbName});
-      Object.values(that.formData).map((data, index) => {
-        connection.query(`INSERT INTO verified_product(order_id, delivered_id, product_id, quantity, unit_id, is_active) VALUES (?) `, [[ that.orderId, data.delivered_id, data.product_id,  data.quantity, data.unit_id, 1]], function (error, rows, fields) {
-          if (error) {  console.log("Error...", error); reject(error);  }
-          resolve(rows);
-        });
-      })
+      connection.query(`UPDATE orders SET status = 3 WHERE id = ${that.orderId}`, function (error, rows, fields) {
+        if (error) {  console.log("Error...", error); reject(error);  }
+        
+        Object.values(that.formData).map((data, index) => {
+          
+          connection.query('INSERT INTO verified_product(order_id, delivered_id, product_id, quantity, unit_id, is_active) VALUES (?, ?, ?, ?, ?, ?);', [ that.orderId, data.delivered_id, data.product_id,  data.quantity, data.unit_id, 1], function (error, rows, fields) {
+            if (error) {  console.log("Error...", error); reject(error);  }
+            
+            connection.query('UPDATE delivered_product SET status = "4" WHERE id = "' + data.delivered_id + '";', function (error, rows, fields) {
+              if (error) {  console.log("Error...", error); reject(error);  }
+              resolve(rows);
+            });          
 
-      Object.values(that.formData).map((data, index) => {
-        connection.query(`UPDATE delivered_product SET status = '4' WHERE id = ${data.delivered_id}`, function (error, rows, fields) {
-          if (error) {  console.log("Error...", error); reject(error);  }
-          resolve(rows);
+          });
         });
       });
       
-      connection.query(`UPDATE orders SET status = 3 WHERE id = ${that.orderId}`, function (error, rows, fields) {
-        if (error) {  console.log("Error...", error); reject(error);  }
-        resolve(rows);
-      });
         connection.release();
         console.log('Process Complete %d', connection.threadId);
     });
