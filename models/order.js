@@ -124,23 +124,22 @@ Order.prototype.handleOrderConfirmation = function () {
       }
       connection.changeUser({database : dbName});
       
-      connection.query('UPDATE orders SET status = 4 WHERE id = "'+that.orderId+'"', function (error, rows, fields) {
-        if (error) {  console.log("Error...", error); reject(error);  }
-        resolve(rows);
-      });
-
-      Object.values(that.formData).map((data, index) => {
-        connection.query(`UPDATE delivered_product SET status = ${data.status} WHERE id = ${data.delivered_id}`, function (error, rows, fields) {
+        connection.query('UPDATE orders SET status = 4 WHERE id = "'+that.orderId+'"', function (error, rows, fields) {
           if (error) {  console.log("Error...", error); reject(error);  }
-          resolve(rows);
+            Object.values(that.formData).map((data, index) => {
+              connection.query('UPDATE delivered_product SET status = "'+ data.status +'" WHERE id = "'+ data.delivered_id +'";', function (error, rows, fields) {
+                if (error) {  console.log("Error...", error); reject(error);  }
+                resolve(rows);
+              });
+            })
         });
-      })
 
         connection.release();
         console.log('Process Complete %d', connection.threadId);
     });
   });
 } 
+
 
 
 Order.prototype.updatePurchaseRegister = function () {
