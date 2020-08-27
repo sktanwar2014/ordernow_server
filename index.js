@@ -3,42 +3,31 @@ const http = require('http');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const cookieParser = require('cookie-parser');
-const session = require('express-session');
 const fs = require('fs');
+
+const { env } = require("./lib/database.js");
+const { nodePort } = require("./lib/connection.js");
+const {mysqlEventsScript} = require("./controllers/mysqlEvents.js");
 
 const app = express();
 
 app.use(cors());
-// app.use(bodyParser.json());
+app.use(bodyParser.json());
 app.use(bodyParser.json({ limit: '50mb', extend: true }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true}));
 
-app.use(cookieParser());
-app.use(session({
-  secret: 'abcdef',
-  resave: true,
-  saveUninitialized: true,
-  cookie: {
-    maxAge: 1000 * 60 * 60, // 60 min
-    sameSite: true,
-    secure: false
-  }
-}));
 
 
-const { env } = require("./lib/database");
 
 if (env === 'dev' || env === 'uat' || env === 'prod') {
     app.use('/', express.static(path.join(__dirname, 'dist')));
     app.use('/dist', express.static(path.join(__dirname, 'dist')));
 } else {
-    app.use('/', express.static(path.join(__dirname, '..', 'src')));
-    app.use('/src', express.static(path.join(__dirname, '..', 'src')));
+    app.use('/', express.static(path.join(__dirname, '..', 'public')));
+    app.use('/public', express.static(path.join(__dirname, '..', 'public')));
 }
 
 const mainRoute = require('./routes/mainRoute');
-
 
 app.use('/staticrecords', require('./routes/static'));
 app.use('/categories', require('./routes/categories'));
@@ -74,21 +63,11 @@ app.use('/api/images', function (req, res, next) {
 });
 
 
-
 app.use('/',mainRoute);
 
 
-
-let port ='';
-
-if(env === 'local'){
-    port = 5000;
-}else if(env === 'prod'){
-    port = 3010;
-}
-
-
 const server = http.createServer(app);
-server.listen(port, () => {
-    console.log('server is running on port: ', port);    
+server.listen(nodePort, async () => {
+    console.log('server is running on port: ', nodePort);
+    // await mysqlEventsScript();
 });

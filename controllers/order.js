@@ -1,9 +1,11 @@
 const Order = require('../models/order.js');
+const Invoices = require('../models/Invoices.js');
 const Settings = require('../models/settings.js');
 const {isNotEmpty} = require('../utils/conditionChecker.js');
 const Static = require('../models/static.js')
-const Auth = require('../models/auth.js')
-const invoiceReport  = require('../reports/generateInvoice.js')
+const Auth = require('../models/auth.js');
+// const invoiceReport  = require('../reports/generateInvoice.js')
+const orderInvoiceLatestVersion  = require('../reports/orderInvoiceLatestVersion.js');
 const generateOrderedProductReport  = require('../reports/generateOrderedProductReport.js')
 const generatePurchasedItemCostReport  = require('../reports/generatePurchasedItemCostReport.js')
 const {isNullOrUndefined} = require('util');
@@ -32,17 +34,21 @@ function calTotalUnit(unitList, unitId, quantity, mainSequence, mainUnitId ){
 
 
 
-const generateInvoice = async function (req, res, next) {
+const getOrderInvoiceLatestVersion = async function (req, res, next) {
     const params = {
         orderId : req.body.orderId,
     }
 
     try {
         const Model = new Order(params);
-        const result = await Model.getInvoiceDetails();
+        // const result = await Model.getInvoiceDetails();
+        // // console.log(result)
+
+        // let DD = invoiceReport(result);
+        const result = await Model.getLastestOrderInvoiceDetails();
         // console.log(result)
 
-        let DD = invoiceReport(result);
+        let DD = orderInvoiceLatestVersion(result);
         res.send(DD);
     } catch (err) {
         next(err);
@@ -108,7 +114,18 @@ const orderVerificationByCustomer = async function (req, res, next) {
     }
     try {
         const Model = new Order(params);
-        const result = await Model.orderVerificationByCustomer();
+        
+        let deliveredId = [];
+        let Values = [];
+        Object.values(params.formData).map(async (data, index) => {
+            deliveredId.push(data.delivered_id);
+            Values.push([params.orderId, data.delivered_id, data.product_id,  data.quantity, data.unit_id, 1]);
+        });
+        Model.delivered_id = deliveredId.join(',');
+
+        await Model.changeOrderStatus({status: 3, orderId: params.orderId});        
+        const result = await Model.orderVerificationByCustomer(Values);        
+
         if(isNotEmpty(result)){
             res.send(true);
         }else{
@@ -150,7 +167,9 @@ const addNewOrder = async function (req, res, next) {
         Model.order_id = orderId;
         
         // await Model.insertBillingDetails();
-        const result = await Model.insertOrderedProduct();
+        const result = Object.values(params.cartItems).map(async (data, index) => {
+            await Model.insertOrderedProduct(data);
+        });
 
         if(result !== null && result !== undefined && result !== ""){
             res.send(true);
@@ -220,14 +239,16 @@ const fetchDeliveryFormData = async function (req, res, next) {
 const handlePurchasedRecord = async function (req, res, next) {
     const params = {
         formData : req.body.formData,
-    }
-    // console.log(params.formData)
+    }    
     try {
         const Model = new Order(params);
-        const result = await Model.handlePurchasedRecord();
-        const result2 = await Model.updateProductPrice();
+        
+        Object.values(params.formData).map(async (data) => {
+            const result = await Model.handlePurchasedRecord(data);
+            const result2 = await Model.updateProductPrice(data);
+        });
 
-        res.send({result});
+        res.send({isEmpty: false});
     } catch (err) {
         next(err);
     }
@@ -510,30 +531,48 @@ const submitDeliveryDetails = async function (req, res, next) {
         orderId : req.body.orderId,        
         createdBy : req.decoded.id,
     }
-    
+
+    let ordered_id = [];
+    let deliveredData = [];
+    let productId = [];
+    let orderDate = [];
+    Object.values(params.formData).map(async (data, index) => {
+        ordered_id.push(data.ordered_id);
+        productId.push(data.product_id);
+        orderDate.push(data.order_date);
+        deliveredData.push([data.order_id, data.ordered_id, data.product_id, data.tracking_id, data.order_date, data.delivery_date,  data.paid_quantity, data.unit_id, data.price, 2, 1, params.createdBy]);
+    });
     try {
         const Model = new Order(params);
-        const submit = await Model.proceedToDelivered();
-        const update = await Model.updatePurchaseRegister();
-        const result = await Model.submitDeliveryDetails();
-
+        Model.ordered_id = ordered_id.join(',');
+        Model.product_id = productId.join(',');
+        Model.order_date = orderDate.join('","');
+        await Model.changeOrderStatus({status: 2, orderId: params.orderId});
+        await Model.proceedToDelivered();
+        await Model.submitDeliveryDetails(deliveredData);
+        await Model.updatePurchaseRegister();
+        
+        
         const settings = await new Settings({orderId: params.orderId}).checkUserAutomationSettings(); 
         if(!isNullOrUndefined(settings)){
-            if(settings.length > 0){                
+            if(settings.length > 0){
                 if(settings[0].is_active === 1){
+                    await Model.changeOrderStatus({status: 3, orderId: params.orderId});
                     const deliveryData = await Model.getDeliveryData();
-                    Model.formData = deliveryData;
-                    await Model.orderVerificationByCustomer();
+                    let deliveredId = [];
+                    let Values = [];                    
+                    Object.values(deliveryData).map(async (data, index) => {
+                        deliveredId.push(data.delivered_id);
+                        Values.push([params.orderId, data.delivered_id, data.product_id,  data.quantity, data.unit_id, 1]);
+                    });
+                    
+                    Model.delivered_id = deliveredId.join(',');                    
+                    await Model.orderVerificationByCustomer(Values);
                 }
             }
-            
         }
 
-        if(isNotEmpty(result)){
-            res.send(true);
-        }else{
-            res.send(false);
-        }
+        res.send(true);
     } catch (err) {
         next(err);
     }
@@ -547,11 +586,46 @@ const handleOrderConfirmation = async function (req, res, next) {
     const params = {
         formData : req.body.productData,
         orderId : req.body.orderId,
+        customer_type : 1, // Franchise User
+        invoice_type : 1, // Franchise invoice  
+        customer_id: req.body.customer_id,
+        created_by : req.decoded.id,
     }
     // console.log(params)
     try {
         const Model = new Order(params);
-        const result = await Model.handleOrderConfirmation();
+
+        await Model.changeOrderStatus({status: 4, orderId: params.orderId});
+
+        const result = Object.values(params.formData).map(async (data, index) => {
+            await Model.handleOrderConfirmation(data);
+        });
+
+
+
+        // const itemList = await Model.getItemListForFirstInvoicing();
+        // console.log('***Controller***', itemList.length);
+        
+        // const InvoiceModel = new Invoices(params);
+        // const invoiceId = await InvoiceModel.generateInvoice();
+        
+        // InvoiceModel.invoice_id = invoiceId;
+        // const invoiceVersionId = await InvoiceModel.generateNewVersionOfInvoice();
+        
+        // InvoiceModel.invoice_version_id = invoiceVersionId;       
+
+        // const itemResponse =  Object.values(itemList).map(async(data, index) => {
+        //     await InvoiceModel.generateInvoiceItems(data);
+        // });
+
+        // InvoiceModel.sub_total = Object.values(itemList).reduce((acc, data, index )=> { return acc + data.total_amt }, 0);
+        // InvoiceModel.total_subtraction = 0;
+        // InvoiceModel.total_addition = 0;
+        // InvoiceModel.total = (InvoiceModel.sub_total + InvoiceModel.total_addition - InvoiceModel.total_subtraction).toFixed(2);
+
+        
+        // const billingId = await InvoiceModel.generateInvoiceBilling();
+
         if(isNotEmpty(result)){
             res.send(true);
         }else {
@@ -683,5 +757,5 @@ module.exports = {
     submitDeliveryDetails : submitDeliveryDetails,
     orderVerificationByCustomer: orderVerificationByCustomer,
     handleOrderConfirmation: handleOrderConfirmation,
-    generateInvoice: generateInvoice,
+    getOrderInvoiceLatestVersion: getOrderInvoiceLatestVersion,
 };
