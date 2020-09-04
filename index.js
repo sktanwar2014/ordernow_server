@@ -68,7 +68,7 @@ app.use('/',mainRoute);
 
 
 const server = http.createServer(app);
-server.listen(nodePort, async () => {
+server.listen(nodePort, 'http://safresh.a1abilities.com.au', async () => {
     console.log('server is running on port: ', nodePort);
     // await mysqlEventsScript();
 });
